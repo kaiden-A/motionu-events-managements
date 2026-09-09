@@ -11,6 +11,7 @@ export interface Session {
   email_verified: boolean
   access_token: string
   expires_at: number
+  picture?: string
 }
 
 const ISSUER = process.env.ZITADEL_ISSUER!
@@ -133,12 +134,28 @@ export async function buildLogoutUrl(postLogoutRedirectUri: string, idTokenHint?
   return `${discovery.end_session_endpoint}?${params}`
 }
 
+export async function fetchUserinfo(
+  accessToken: string
+): Promise<{ picture?: string; name?: string }> {
+  try {
+    const discovery = await getDiscovery()
+    const res = await fetch(discovery.userinfo_endpoint, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return {}
+    return (await res.json()) as { picture?: string; name?: string }
+  } catch {
+    return {}
+  }
+}
+
 export async function createSessionToken(session: Session) {
   return new SignJWT({
     name: session.name,
     email: session.email,
     email_verified: session.email_verified,
     access_token: session.access_token,
+    picture: session.picture,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(session.sub)
@@ -161,6 +178,7 @@ export async function decryptSessionToken(token: string | undefined): Promise<Se
       email_verified: !!payload.email_verified,
       access_token: (payload.access_token as string) || '',
       expires_at: (payload.exp as number) || 0,
+      picture: (payload.picture as string | undefined) || undefined,
     }
   } catch {
     return null

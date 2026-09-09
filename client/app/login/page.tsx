@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { Icon } from '@/components/Icon'
 
 const MESSAGES: Record<string, string> = {
   access_denied: 'Sign in was cancelled or not allowed.',
@@ -17,26 +18,51 @@ function LoginBody() {
   const message = err ? (MESSAGES[err] ?? 'Sign in failed. Please try again.') : ''
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#0f0f1e] px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-700">
-          Motion-U
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-neutral-900">Movement &amp; Wellness</h1>
-        <p className="mt-1 text-sm text-neutral-500">Events management — sign in to continue.</p>
-
-        {message && (
-          <div className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
-            {message}
+    <main
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{
+        background: 'linear-gradient(135deg, var(--sidebar) 0%, var(--sidebar-2) 60%, var(--primary-dark) 160%)',
+      }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.png"
+            alt="Motion-U logo"
+            className="h-12 w-12 rounded-2xl object-cover shadow-lg"
+          />
+          <div className="text-left">
+            <p className="font-display text-lg font-semibold leading-tight text-white">Motion-U</p>
+            <p className="text-xs text-white/60">Movement &amp; Wellness Club</p>
           </div>
-        )}
+        </div>
 
-        <a
-          href="/api/auth/login"
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-800"
-        >
-          Sign in with Zitadel
-        </a>
+        <div className="surface rounded-2xl p-8 shadow-xl">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Event Management
+          </p>
+          <h1 className="mt-2 text-2xl font-bold">Club events, one dashboard</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
+            Programs, QR check-in and certificates — sign in with your club account to continue.
+          </p>
+
+          {message && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm text-red-700" style={{ background: 'var(--danger-light)' }}>
+              <Icon name="circle-exclamation" size={14} className="mt-0.5 shrink-0" />
+              {message}
+            </div>
+          )}
+
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
+            href="/api/auth/login"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          >
+            <Icon name="person-running" size={14} />
+            Sign in with Zitadel
+          </a>
+        </div>
       </div>
     </main>
   )

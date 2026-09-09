@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import {
   createSessionToken,
   exchangeCodeForTokens,
+  fetchUserinfo,
   OrgForbiddenError,
   SESSION_COOKIE,
   verifyIdToken,
@@ -42,6 +43,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=token_exchange_failed', request.nextUrl))
   }
 
+  if (process.env.DEBUG_AUTH) {
+    const at = tokens.access_token
+    const segs = at.split('.').map((s) => `${s.length % 4}:${s.length}`)
+    console.log(
+      `[authdbg] zitadel access_token len=${at.length} head=${at.slice(0, 24)}` +
+        ` segs=[${segs.join(' ')}] hasPad=${at.includes('=')}`
+    )
+  }
+
   let claims: Awaited<ReturnType<typeof verifyIdToken>>
   try {
     claims = await verifyIdToken(tokens.id_token, oidcState.nonce)
@@ -54,13 +64,22 @@ export async function GET(request: NextRequest) {
 
   const expiresIn = Math.max(tokens.expires_in || 12 * 60 * 60, 60)
 
+  const userinfo = await fetchUserinfo(tokens.access_token)
+  const claimsPicture =
+    (claims as Record<string, unknown>).picture || (userinfo as { picture?: unknown }).picture
+
   const session: Session = {
     sub: (claims.sub as string) || '',
-    name: (claims.name as string) || (claims.preferred_username as string) || '',
+    name:
+      (userinfo.name as string) ||
+      (claims.name as string) ||
+      (claims.preferred_username as string) ||
+      '',
     email: (claims.email as string) || '',
     email_verified: !!claims.email_verified,
     access_token: tokens.access_token,
     expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    picture: typeof claimsPicture === 'string' ? claimsPicture : undefined,
   }
 
   const sessionToken = await createSessionToken(session)

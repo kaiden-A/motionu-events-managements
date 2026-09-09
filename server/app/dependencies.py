@@ -101,6 +101,15 @@ def get_current_user(
     try:
         return verify_token(credentials.credentials)
     except jwt.InvalidTokenError as exc:
+        import os
+
+        if os.environ.get("DEBUG_AUTH"):
+            t = credentials.credentials
+            segs = [f"{len(s) % 4}:{len(s)}" for s in t.split(".")]
+            print(
+                f"[authdbg] reject len={len(t)} head={t[:24]!r} segs=[{' '.join(segs)}]"
+                f" hasPad={'=' in t} err={exc}"
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {exc}",

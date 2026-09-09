@@ -10,6 +10,15 @@ async function forward(request: NextRequest, method: string) {
     return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 })
   }
 
+  if (process.env.DEBUG_AUTH) {
+    const at = session.access_token
+    const segs = at.split('.').map((s) => `${s.length % 4}:${s.length}`)
+    console.log(
+      `[authdbg] forwarded access_token len=${at.length} head=${at.slice(0, 24)}` +
+        ` segs=[${segs.join(' ')}] hasPad=${at.includes('=')}`
+    )
+  }
+
   const path = request.nextUrl.pathname.replace(/^\/api/, '') || '/'
   const url = `${BACKEND_URL}${path}${request.nextUrl.search}`
 

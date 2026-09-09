@@ -13,6 +13,7 @@ export async function GET() {
       email: session.email,
       name: session.name,
       verified: session.email_verified,
+      picture: session.picture ?? null,
     },
   })
 }
