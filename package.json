@@ -8,7 +8,8 @@
     "install:server": "uv sync --directory server",
     "dev": "concurrently -n server,client -c blue,green \"npm --prefix client run dev\" \"uv run --directory server uvicorn app.main:app --reload\"",
     "dev:client": "npm --prefix client run dev",
-    "dev:server": "uv run --directory server uvicorn app.main:app --reload"
+    "dev:server": "uv run --directory server uvicorn app.main:app --reload",
+    "test:server": "uv run --directory server pytest"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"

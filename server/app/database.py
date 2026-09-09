@@ -15,8 +15,9 @@ def normalize_asyncpg_url(url: str) -> str:
     """Convert a generic Neon/Postgres URL into SQLAlchemy asyncpg form:
     asyncpg driver + `ssl=` instead of `sslmode=`, drop psycopg-only
     `channel_binding` (it is rejected as an unknown connect kwarg)."""
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if not url.startswith("postgresql://"):
+        return url
+    url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     parts = urlsplit(url)
     params = dict(parse_qsl(parts.query, keep_blank_values=True))
     if "sslmode" in params and "ssl" not in params:
