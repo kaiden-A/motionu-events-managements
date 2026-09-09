@@ -49,6 +49,18 @@ def _no_r2(monkeypatch):
     monkeypatch.setattr(r2, "_s3", lambda: pytest.fail("r2._s3 should not be reached in tests"))
 
 
+@pytest.fixture(autouse=True)
+def _no_email(monkeypatch):
+    """Keep every test hermetic: no accidental real sends (the repo .env may
+    carry live EMAIL_API / API_KEY values). Individual tests opt in by setting
+    them back on the same cached settings instance."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "email_api", None)
+    monkeypatch.setattr(settings, "api_key", None)
+
+
 def make_session_in(ordinal: int, label: str | None = None) -> SessionIn:
     return SessionIn(
         label=label or f"Session {ordinal}",

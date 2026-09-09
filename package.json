@@ -9,7 +9,8 @@
     "dev": "concurrently -n server,client -c blue,green \"npm --prefix client run dev\" \"uv run --directory server uvicorn app.main:app --reload\"",
     "dev:client": "npm --prefix client run dev",
     "dev:server": "uv run --directory server uvicorn app.main:app --reload",
-    "test:server": "uv run --directory server pytest"
+    "test:server": "uv run --directory server pytest",
+    "clean:db": "uv run --directory server python clean_db.py"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"

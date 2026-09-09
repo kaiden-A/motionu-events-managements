@@ -1,10 +1,16 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models import Attendance, Event, Participant, Session
 from app.schemas import AttendanceOut, ParticipantIn, ParticipantOut
 from app.services import events as event_svc
+from app.services import mail as mail_svc
 from app.services import tokens
+
+logger = logging.getLogger("motionu.mail")
 
 
 def _sort_sessions(event: Event) -> list[Session]:
@@ -109,8 +115,61 @@ async def unlock_next_pass(
     return a
 
 
-async def send_pass_stub(db: AsyncSession, attendance: Attendance) -> None:
-    """Stub email delivery: record that the pass was sent. Real email provider
-    will be wired in later per product guidelines."""
+async def deliver_qr_pass(
+    db: AsyncSession,
+    event: Event,
+    participant: Participant,
+    attendance: Attendance,
+    *,
+    strict: bool = False,
+) -> str:
+    """Render the QR pass from the Jinja2 template and deliver it through the
+    configured provider. Returns the mode used:
+
+    - 'live'      sent through the provider and qr_sent_at recorded
+    - 'simulated' provider not configured — recorded as sent for demo/dev
+    - 'skipped'   provider failure, best-effort (strict=False): qr_sent_at kept unset
+
+    With strict=True an EmailError is re-raised and nothing is recorded."""
+    if not get_settings().email_enabled:
+        logger.info("email provider not configured — simulated send to %s", participant.email)
+        attendance.qr_sent_at = event_svc._now_iso()
+        await db.flush()
+        return "simulated"
+
+    session = next(
+        (s for s in event.sessions if s.id == attendance.session_id), None
+    )
+    if session is None:
+        raise ValueError(f"attendance {attendance.id} has no matching session")
+    if not attendance.qr_token:
+        raise ValueError(f"attendance {attendance.id} has no QR token")
+
+    name_parts = participant.name.split()
+    context = {
+        "first_name": name_parts[0] if name_parts else participant.name,
+        "participant_name": participant.name,
+        "student_id": participant.student_id,
+        "event_title": event.title,
+        "session_label": session.label,
+        "date_label": mail_svc.fmt_date(session.date),
+        "time_label": mail_svc.fmt_time_range(session.start_time, session.end_time),
+        "location": session.location,
+        "token": attendance.qr_token,
+        "qr_rows": mail_svc.qr_matrix(attendance.qr_token),
+    }
+    subject = f"Motion-U QR Pass — {event.title} · {session.label}"
+    html = mail_svc.render_email("qr_pass.html", context)
+
+    try:
+        await mail_svc.send_html(participant.email, subject, html)
+    except mail_svc.EmailError as exc:
+        if strict:
+            raise
+        logger.warning("auto email skipped for %s: %s", participant.email, exc)
+        return "skipped"
+
     attendance.qr_sent_at = event_svc._now_iso()
     await db.flush()
+    logger.info("QR pass emailed to %s (%s)", participant.email, event.title)
+    return "live"

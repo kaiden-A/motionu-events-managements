@@ -39,6 +39,12 @@
   --cat-fit: #16A34A;     --cat-fit-bg: #DCFCE7;
   --cat-martial: #D97706; --cat-martial-bg: #FEF3C7;
 
+  --cat-general: #4F46E5;   --cat-general-bg: #E0E7FF;
+  --cat-workshop: #EA580C;  --cat-workshop-bg: #FFEDD5;
+  --cat-hackathon: #9333EA; --cat-hackathon-bg: #F3E8FF;
+  --cat-talk: #0284C7;      --cat-talk-bg: #E0F2FE;
+  --cat-seminar: #0D9488;   --cat-seminar-bg: #CCFBF1;
+
   --border: #E2E8F0;
   --border-strong: #CBD5E1;
   --sidebar: #0B1B33;
@@ -80,6 +86,12 @@ html[data-theme="dark"] {
   --cat-dance: #818CF8;     --cat-dance-bg: rgba(129, 140, 248, .14);
   --cat-fit: #4ADE80;       --cat-fit-bg: rgba(74, 222, 128, .14);
   --cat-martial: #FBBF24;   --cat-martial-bg: rgba(251, 191, 36, .14);
+
+  --cat-general: #818CF8;    --cat-general-bg: rgba(129, 140, 248, .14);
+  --cat-workshop: #FB923C;   --cat-workshop-bg: rgba(251, 146, 60, .14);
+  --cat-hackathon: #C084FC;  --cat-hackathon-bg: rgba(192, 132, 252, .14);
+  --cat-talk: #38BDF8;       --cat-talk-bg: rgba(56, 189, 248, .14);
+  --cat-seminar: #2DD4BF;    --cat-seminar-bg: rgba(45, 212, 191, .14);
 
   --border: rgba(148, 163, 184, .16);
   --border-strong: rgba(148, 163, 184, .30);
@@ -332,6 +344,26 @@ textarea {
 .cat-martial {
   background: var(--cat-martial-bg);
   color: var(--cat-martial);
+}
+.cat-general {
+  background: var(--cat-general-bg);
+  color: var(--cat-general);
+}
+.cat-workshop {
+  background: var(--cat-workshop-bg);
+  color: var(--cat-workshop);
+}
+.cat-hackathon {
+  background: var(--cat-hackathon-bg);
+  color: var(--cat-hackathon);
+}
+.cat-talk {
+  background: var(--cat-talk-bg);
+  color: var(--cat-talk);
+}
+.cat-seminar {
+  background: var(--cat-seminar-bg);
+  color: var(--cat-seminar);
 }
 
 .status-dot {

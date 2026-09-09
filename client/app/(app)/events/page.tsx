@@ -18,7 +18,7 @@ import {
 } from '@/lib/format'
 import type { EventItem, ParticipantItem, SessionItem } from '@/lib/types'
 
-const CATEGORIES = ['General', 'Wellness', 'Dance', 'Fitness', 'Martial Arts']
+const CATEGORIES = ['General', 'Workshop', 'Hackathon', 'Tech Talk', 'Seminar']
 
 interface SessionDraft {
   label: string

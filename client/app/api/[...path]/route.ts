@@ -40,6 +40,9 @@ async function forward(request: NextRequest, method: string) {
 
   const upstream = await fetch(url, init)
   const text = await upstream.text()
+  if (upstream.status === 204 || upstream.status === 205) {
+    return new NextResponse(null, { status: upstream.status })
+  }
   let data: unknown = null
   try {
     data = text ? JSON.parse(text) : null

@@ -302,7 +302,7 @@ function openEmailSendModal(eventId, pid, source){
         <div id="emailPassQrBox"></div>
       </div>
       <div class="min-w-0 text-left">
-        <p class="text-[10px] uppercase tracking-wider" style="color:var(--ink-soft);">Motion-U Movement &amp; Wellness Club</p>
+        <p class="text-[10px] uppercase tracking-wider" style="color:var(--ink-soft);">Motion-U Mobility, Technology &amp; Industry On University Startup Incubator</p>
         <p class="font-display font-semibold text-sm leading-tight mt-1">${esc(ev.title)}</p>
         <p class="text-xs mt-1">${esc(p.name)}</p>
         <p class="text-[11px]" style="color:var(--ink-soft);">${p.studentId}</p>

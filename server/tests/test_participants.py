@@ -118,13 +118,14 @@ async def test_unlock_next_pass_idempotent_when_token_exists(db):
     assert second.qr_token == token
 
 
-async def test_send_pass_stub_records_sent_at(db):
+async def test_deliver_qr_pass_simulated_when_email_unconfigured(db):
     event = await _make_event_with_sessions(db, n_sessions=2)
-    p = await _add(db, event)
+    p = await _add(db, event, name="Alice", email="alice@example.com")
     sessions = sorted(event.sessions, key=lambda s: s.ordinal)
     unlocked = await participant_svc.unlock_next_pass(db, p, event, sessions[0])
     assert unlocked.qr_sent_at is None
-    await participant_svc.send_pass_stub(db, unlocked)
+    mode = await participant_svc.deliver_qr_pass(db, event, p, unlocked)
+    assert mode == "simulated"
     assert unlocked.qr_sent_at is not None
 
 

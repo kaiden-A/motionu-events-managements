@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <title>Motion-U QR Pass</title>
+  <style>
+    :root { color-scheme: light only; }
+    .qrd { background-color: #0F172A !important; }
+    .qrl { background-color: #FFFFFF !important; }
+    [data-ogsc] .qrd { background-color: #0F172A !important; }
+    [data-ogsc] .qrl { background-color: #FFFFFF !important; }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#F4F6FB; font-family:'Segoe UI', Arial, Helvetica, sans-serif; color:#0F172A; -webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6FB; padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background:#FFFFFF; border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(15,23,42,.06);">
+          <!-- header -->
+          <tr>
+            <td style="background:linear-gradient(120deg,#1E3A8A,#1D4ED8 58%,#155E75); padding:28px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-size:20px; font-weight:700; color:#FFFFFF; letter-spacing:.5px;">Motion-U</td>
+                </tr>
+                <tr>
+                  <td style="padding-top:2px; font-size:12px; color:rgba(255,255,255,.72);">Mobility, Technology &amp; Industry On University Startup Incubator</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- body -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0; font-size:15px;">Hi {{ first_name }},</p>
+              <p style="margin:14px 0 0; font-size:14px; line-height:1.6; color:#475569;">
+                Here is your QR check-in pass for <strong style="color:#0F172A;">{{ event_title }}</strong>.
+                Show it at the door on the day — a quick scan marks you as joined.
+              </p>
+
+              <!-- program card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px; border:1px solid #E2E8F0; border-radius:12px; overflow:hidden;">
+                <tr>
+                  <td style="padding:18px 20px; background:#F8FAFC;">
+                    <p style="margin:0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#64748B;">{{ event_title }}</p>
+                    <p style="margin:6px 0 0; font-size:17px; font-weight:700; color:#0F172A;">{{ session_label }}</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px; font-size:13px; color:#334155;">
+                      <tr>
+                        <td style="padding:3px 8px 3px 0; color:#94A3B8; width:64px;">Date</td>
+                        <td style="padding:3px 0; font-weight:600;">{{ date_label }}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:3px 8px 3px 0; color:#94A3B8; width:64px;">Time</td>
+                        <td style="padding:3px 0; font-weight:600;">{{ time_label }}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:3px 8px 3px 0; color:#94A3B8; width:64px;">Venue</td>
+                        <td style="padding:3px 0; font-weight:600;">{{ location }}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- QR area -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+                <tr>
+                  <td align="center" style="background:#F1F5F9; border:1px dashed #CBD5E1; border-radius:12px; padding:12px;">
+                    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td align="center" style="background:#FFFFFF; padding:28px; border-radius:6px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; line-height:0; font-size:0;">
+{% for row in qr_rows -%}
+                            <tr>{% for cell in row %}{% if cell %}<td width="7" height="7" class="qrd">&nbsp;</td>{% else %}<td width="7" height="7" class="qrl">&nbsp;</td>{% endif %}{% endfor %}</tr>
+{% endfor -%}
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin:14px 0 0; font-size:14px; font-weight:700; color:#0F172A;">{{ participant_name }}</p>
+                    <p style="margin:2px 0 0; font-size:12px; color:#64748B;">{{ student_id }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- pass code fallback -->
+              <p style="margin:16px 0 0; font-size:11px; color:#94A3B8; text-align:center; word-break:break-all;">Code: {{ token }}</p>
+
+              <!-- reminders -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px; background:#EFF6FF; border-radius:12px;">
+                <tr>
+                  <td style="padding:16px 20px; font-size:13px; line-height:1.7; color:#1E40AF;">
+                    <strong>Reminders</strong><br>
+                    - This pass is unique to you — do not forward it to anyone else.<br>
+                    - Arrive a few minutes early so the scan is quick and smooth.<br>
+                    - Having trouble? The organiser can re-send or verify your pass.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- footer -->
+          <tr>
+            <td style="padding:18px 32px; border-top:1px solid #E2E8F0; font-size:11px; color:#94A3B8; text-align:center;">
+              Motion-U · Events Management — this is an automated email, no reply is needed.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

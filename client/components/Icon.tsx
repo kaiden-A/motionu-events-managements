@@ -25,6 +25,7 @@ import {
   faFileCircleQuestion,
   faFilePdf,
   faGaugeHigh,
+  faGraduationCap,
   faHandFist,
   faLayerGroup,
   faListCheck,
@@ -38,6 +39,7 @@ import {
   faPersonRunning,
   faPlus,
   faQrcode,
+  faRocket,
   faRotate,
   faSpa,
   faStop,
@@ -51,6 +53,8 @@ import {
   faVideo,
   faWandMagicSparkles,
   faXmark,
+  faMicrophone,
+  faWrench,
 } from '@fortawesome/free-solid-svg-icons'
 import {
   faBell,
@@ -84,12 +88,14 @@ export type IconName =
   | 'file-circle-question'
   | 'file-pdf'
   | 'gauge'
+  | 'graduation-cap'
   | 'hand-fist'
   | 'layer-group'
   | 'list-check'
   | 'lock'
   | 'location-dot'
   | 'magnifying-glass'
+  | 'microphone'
   | 'moon'
   | 'music'
   | 'paper-plane'
@@ -97,6 +103,7 @@ export type IconName =
   | 'person-running'
   | 'plus'
   | 'qrcode'
+  | 'rocket'
   | 'rotate'
   | 'spa'
   | 'stop'
@@ -109,6 +116,7 @@ export type IconName =
   | 'user-xmark'
   | 'video'
   | 'wand-magic-sparkles'
+  | 'wrench'
   | 'xmark'
   | 'bell'
   | 'calendar'
@@ -140,6 +148,7 @@ const SOLID: Record<IconName, IconDefinition> = {
   'file-circle-question': faFileCircleQuestion,
   'file-pdf': faFilePdf,
   gauge: faGaugeHigh,
+  'graduation-cap': faGraduationCap,
   'hand-fist': faHandFist,
   'layer-group': faLayerGroup,
   'list-check': faListCheck,
@@ -148,11 +157,13 @@ const SOLID: Record<IconName, IconDefinition> = {
   'magnifying-glass': faMagnifyingGlass,
   moon: faMoon,
   music: faMusic,
+  microphone: faMicrophone,
   'paper-plane': faPaperPlane,
   pen: faPen,
   'person-running': faPersonRunning,
   plus: faPlus,
   qrcode: faQrcode,
+  rocket: faRocket,
   rotate: faRotate,
   spa: faSpa,
   stop: faStop,
@@ -165,6 +176,7 @@ const SOLID: Record<IconName, IconDefinition> = {
   'user-xmark': faUserXmark,
   video: faVideo,
   'wand-magic-sparkles': faWandMagicSparkles,
+  wrench: faWrench,
   xmark: faXmark,
   bell: faBell,
   calendar: faCalendar,

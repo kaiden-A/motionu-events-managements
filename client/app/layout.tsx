@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Motion-U — Event Management System',
-  description: 'Motion-U Movement & Wellness Club — events management',
+  description: 'Motion-U Mobility, Technology & Industry On University Startup Incubator — events management',
 }
 
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('mu-theme');if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`

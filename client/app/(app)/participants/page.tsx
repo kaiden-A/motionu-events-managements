@@ -122,7 +122,7 @@ function QrPassModal({
 }
 
 /* ------------------------------------------------------------------ */
-/* Email (simulated) modal                                             */
+/* Email modal                                                         */
 /* ------------------------------------------------------------------ */
 
 function EmailModal({
@@ -146,7 +146,7 @@ function EmailModal({
     setSending(true)
     try {
       await api.sendPass(ev.id, p.id, a.session_id)
-      toast(`QR pass sent to ${p.email} (simulated).`)
+      toast(`QR pass sent to ${p.email}.`)
       onSent()
       onClose()
     } catch (e) {
@@ -173,7 +173,7 @@ function EmailModal({
         </div>
         <div className="surface-2 rounded-xl border border-border p-3 text-xs">
           <p className="mb-2" style={{ color: 'var(--ink-soft)' }}>
-            Message preview (simulated delivery):
+            Message preview:
           </p>
           {a.qr_token && (
             <div className="pass-card flex items-center gap-4 rounded-xl border border-border p-4">
@@ -185,7 +185,7 @@ function EmailModal({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/icon.png" alt="" className="h-4 w-4 rounded object-cover" />
                   <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--ink-soft)' }}>
-                    Motion-U Movement &amp; Wellness Club
+                    Motion-U Mobility, Technology &amp; Industry On University Startup Incubator
                   </span>
                 </div>
                 <p className="font-display mt-1 text-sm font-semibold leading-tight">
@@ -220,6 +220,8 @@ function EmailModal({
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 
+const ROW_MENU_EST_HEIGHT = 250
+
 const EMPTY_FORM = { name: '', student_id: '', email: '', phone: '' }
 
 function ParticipantsBody() {
@@ -236,7 +238,9 @@ function ParticipantsBody() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [wantQrEmail, setWantQrEmail] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [menuId, setMenuId] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ p: ParticipantItem; rect: DOMRect } | null>(null)
+  const menuElRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [passP, setPassP] = useState<ParticipantItem | null>(null)
   const [emailFor, setEmailFor] = useState<{ p: ParticipantItem; a: AttendanceItem } | null>(null)
   const addOnce = useRef(false)
@@ -269,16 +273,50 @@ function ParticipantsBody() {
     }
   }, [params, events.length])
 
+  const closeMenu = () => {
+    setMenu(null)
+    triggerRef.current = null
+  }
+
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, p: ParticipantItem) => {
+    if (menu?.p.id === p.id) {
+      closeMenu()
+      return
+    }
+    const rect = e.currentTarget.getBoundingClientRect()
+    triggerRef.current = e.currentTarget
+    setMenu({ p, rect })
+  }
+
   useEffect(() => {
-    const onDown = () => setMenuId(null)
-    document.addEventListener('click', onDown)
-    return () => document.removeEventListener('click', onDown)
-  }, [])
+    if (!menu) return
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node | null
+      if (target && menuElRef.current?.contains(target)) return
+      if (target && triggerRef.current?.contains(target)) return
+      setMenu(null)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenu(null)
+    }
+    const onScroll = () => setMenu(null)
+    const onResize = () => setMenu(null)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onResize)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [menu])
 
   const onEventChange = (id: string) => {
     setEventId(id)
     setSearch('')
-    setMenuId(null)
+    closeMenu()
     reloadRoster(id)
   }
 
@@ -535,78 +573,17 @@ function ParticipantsBody() {
                         )}
                       </div>
                     </td>
-                    <td className="relative px-5 py-3 text-right">
+                    <td className="px-5 py-3 text-right">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setMenuId(menuId === p.id ? null : p.id)
-                        }}
+                        onClick={(e) => openMenu(e, p)}
                         aria-label={`Actions for ${p.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menu?.p.id === p.id}
                         title="Actions"
                         className="hover-soft flex h-8 w-8 items-center justify-center rounded-md border border-border"
                       >
                         <Icon name="ellipsis-vertical" size={12} />
                       </button>
-                      {menuId === p.id && (
-                        <div
-                          className="row-menu absolute right-5 top-10 z-30 w-56 rounded-xl border border-border py-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => {
-                              setPassP(p)
-                              setMenuId(null)
-                            }}
-                            className="row-menu-item"
-                          >
-                            <Icon name="qrcode" size={12} className="w-4 text-center" />
-                            View QR passes
-                          </button>
-                          <button
-                            onClick={() => {
-                              const a = p.attendance.find((x) => x.qr_token)
-                              if (a) setEmailFor({ p, a })
-                              else toast('No pass unlocked for this participant yet.', 'info')
-                              setMenuId(null)
-                            }}
-                            className="row-menu-item"
-                          >
-                            <Icon name="envelope" size={12} className="w-4 text-center" />
-                            Email QR pass
-                          </button>
-                          <button
-                            onClick={() => {
-                              openEdit(p)
-                              setMenuId(null)
-                            }}
-                            className="row-menu-item"
-                          >
-                            <Icon name="pen" size={12} className="w-4 text-center" />
-                            Edit details
-                          </button>
-                          <button
-                            onClick={() => {
-                              issueCert(p)
-                              setMenuId(null)
-                            }}
-                            className="row-menu-item"
-                          >
-                            <Icon name="award" size={12} className="w-4 text-center" />
-                            Issue certificate
-                          </button>
-                          <div className="row-menu-sep" />
-                          <button
-                            onClick={() => {
-                              remove(p)
-                              setMenuId(null)
-                            }}
-                            className="row-menu-item danger"
-                          >
-                            <Icon name="trash" size={12} className="w-4 text-center" />
-                            Remove from roster
-                          </button>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -723,6 +700,85 @@ function ParticipantsBody() {
           onSent={() => reloadRoster(eventId)}
         />
       )}
+
+      {menu &&
+        (() => {
+          const r = menu.rect
+          const gap = 6
+          const below = r.bottom + gap
+          let top = below
+          if (below + ROW_MENU_EST_HEIGHT > window.innerHeight) {
+            if (r.top - gap - ROW_MENU_EST_HEIGHT >= 0) {
+              top = r.top - gap - ROW_MENU_EST_HEIGHT
+            } else {
+              top = Math.max(8, window.innerHeight - ROW_MENU_EST_HEIGHT - 8)
+            }
+          }
+          return (
+            <div
+              role="menu"
+              className="row-menu fixed z-[90] w-56 rounded-xl border border-border py-1.5"
+              style={{ top, right: Math.max(gap, window.innerWidth - r.right) }}
+              ref={(el) => {
+                menuElRef.current = el
+              }}
+            >
+              <button
+                onClick={() => {
+                  setPassP(menu.p)
+                  closeMenu()
+                }}
+                className="row-menu-item"
+              >
+                <Icon name="qrcode" size={12} className="w-4 text-center" />
+                View QR passes
+              </button>
+              <button
+                onClick={() => {
+                  const a = menu.p.attendance.find((x) => x.qr_token)
+                  if (a) setEmailFor({ p: menu.p, a })
+                  else toast('No pass unlocked for this participant yet.', 'info')
+                  closeMenu()
+                }}
+                className="row-menu-item"
+              >
+                <Icon name="envelope" size={12} className="w-4 text-center" />
+                Email QR pass
+              </button>
+              <button
+                onClick={() => {
+                  openEdit(menu.p)
+                  closeMenu()
+                }}
+                className="row-menu-item"
+              >
+                <Icon name="pen" size={12} className="w-4 text-center" />
+                Edit details
+              </button>
+              <button
+                onClick={() => {
+                  issueCert(menu.p)
+                  closeMenu()
+                }}
+                className="row-menu-item"
+              >
+                <Icon name="award" size={12} className="w-4 text-center" />
+                Issue certificate
+              </button>
+              <div className="row-menu-sep" />
+              <button
+                onClick={() => {
+                  remove(menu.p)
+                  closeMenu()
+                }}
+                className="row-menu-item danger"
+              >
+                <Icon name="trash" size={12} className="w-4 text-center" />
+                Remove from roster
+              </button>
+            </div>
+          )
+        })()}
     </div>
   )
 }

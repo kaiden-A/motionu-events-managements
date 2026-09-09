@@ -85,7 +85,7 @@ async def checkin(db: AsyncSession, token: str, actor_sub: str) -> dict:
     next_unlocked = False
     unlocked = await participant_svc.unlock_next_pass(db, participant, event, session)
     if unlocked is not None and unlocked.qr_sent_at is None:
-        await participant_svc.send_pass_stub(db, unlocked)
+        await participant_svc.deliver_qr_pass(db, event, participant, unlocked)
         next_unlocked = True
 
     await event_svc.log_activity(

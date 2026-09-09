@@ -63,7 +63,7 @@ export default function CheckinPage() {
   async function handleToken(raw: string) {
     try {
       const result = await api.checkin(raw.trim())
-      const extra = result.next_unlocked ? ' — next pass unlocked + sent' : ''
+      const extra = result.next_unlocked ? ' — next session pass unlocked' : ''
       pushLog(
         `${result.participant.name} joined ${result.session.label} of ${result.event.title}${extra}`,
         'ok'

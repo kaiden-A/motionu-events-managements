@@ -34,7 +34,9 @@ function LoginBody() {
           />
           <div className="text-left">
             <p className="font-display text-lg font-semibold leading-tight text-white">Motion-U</p>
-            <p className="text-xs text-white/60">Movement &amp; Wellness Club</p>
+            <p className="text-xs leading-snug text-white/60">
+              Mobility, Technology &amp; Industry On University Startup Incubator
+            </p>
           </div>
         </div>
 
@@ -42,7 +44,7 @@ function LoginBody() {
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             Event Management
           </p>
-          <h1 className="mt-2 text-2xl font-bold">Club events, one dashboard</h1>
+          <h1 className="mt-2 text-2xl font-bold">Events, one dashboard</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
             Programs, QR check-in and certificates — sign in with your club account to continue.
           </p>

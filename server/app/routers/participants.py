@@ -11,6 +11,7 @@ from app.models import Attendance, Event, Participant, Session
 from app.schemas import ParticipantIn, ParticipantOut, ParticipantUpdateIn
 from app.services import checkin as checkin_svc
 from app.services import events as event_svc
+from app.services import mail as mail_svc
 from app.services import participants as participant_svc
 
 router = APIRouter(prefix="/events/{event_id}/participants", tags=["participants"])
@@ -129,7 +130,7 @@ async def set_attendance(
         att.joined_at = datetime.now(timezone.utc)
         unlocked = await participant_svc.unlock_next_pass(db, p, event, session)
         if unlocked is not None and unlocked.qr_sent_at is None:
-            await participant_svc.send_pass_stub(db, unlocked)
+            await participant_svc.deliver_qr_pass(db, event, p, unlocked)
         await event_svc.log_activity(
             db, "join", f"{p.name} joined {session.label} of {event.title}", event.id, user.sub
         )
@@ -161,9 +162,18 @@ async def send_pass(
     att = (await db.execute(stmt)).scalar_one_or_none()
     if att is None or att.qr_token is None:
         raise HTTPException(status_code=409, detail="Pass not unlocked for this session yet")
-    await participant_svc.send_pass_stub(db, att)
+    try:
+        mode = await participant_svc.deliver_qr_pass(db, event, p, att, strict=True)
+    except mail_svc.EmailError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     await event_svc.log_activity(
         db, "qr", f"QR pass emailed to {p.name} — {event.title}", event.id, user.sub
     )
     await db.commit()
-    return {"ok": True, "sent": True, "to": p.email, "session_id": session_id}
+    return {
+        "ok": True,
+        "sent": mode == "live",
+        "mode": mode,
+        "to": p.email,
+        "session_id": session_id,
+    }

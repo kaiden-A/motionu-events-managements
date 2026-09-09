@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     bucket_names: str = "motionu-certs"
     r2_endpoint: str | None = None  # derived from account id when unset
 
+    # --- Email provider ---
+    email_api: str | None = None   # base URL of the email API (EMAIL_API)
+    api_key: str | None = None     # provider key sent as `motionu-api-key` (API_KEY)
+    email_from: str = "info@motionukict.com"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property
@@ -49,6 +54,10 @@ class Settings(BaseSettings):
         if self.r2_endpoint:
             return self.r2_endpoint.rstrip("/")
         return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.email_api and self.api_key)
 
 
 @lru_cache

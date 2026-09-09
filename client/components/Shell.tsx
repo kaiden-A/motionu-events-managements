@@ -32,7 +32,7 @@ const NAV: NavLink[] = [
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: 'Dashboard', subtitle: 'Overview of Motion-U activity' },
-  '/events': { title: 'Events', subtitle: 'Create and manage club programs' },
+  '/events': { title: 'Events', subtitle: 'Create and manage programs' },
   '/participants': { title: 'Participants', subtitle: 'Roster of the selected program' },
   '/checkin': { title: 'Check-in', subtitle: 'Scan QR passes to join, or mark attendance manually' },
   '/certificates': { title: 'Certificate Vault', subtitle: 'Certificate templates for every program' },
@@ -49,7 +49,7 @@ function Brand({ onNav }: { onNav?: () => void }) {
       <div className="min-w-0">
         <p className="font-display font-semibold leading-tight text-white">Motion-U</p>
         <p className="truncate text-[11px] leading-tight text-white/50">
-          Movement &amp; Wellness Club
+          Events Managements
         </p>
       </div>
       {onNav && (
@@ -100,7 +100,7 @@ function SidebarFooter({ user }: { user: ShellUser }) {
         />
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-white">{user.name}</p>
-          <p className="truncate text-[11px] text-white/40">Club Committee</p>
+          <p className="truncate text-[11px] text-white/40">Organising Committee</p>
         </div>
       </div>
     </div>

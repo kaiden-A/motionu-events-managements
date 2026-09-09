@@ -72,7 +72,7 @@ function makeTemplateSvg(eventTitle, uploadedAt){
   <text x="${w/2}" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#14142B">Amirah Hashim</text>
   <line x1="${w/2-180}" y1="650" x2="${w/2+180}" y2="650" stroke="#14142B" stroke-width="1"/>
   <text x="${w/2}" y="680" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#5B5B76">Club President</text>
-  <text x="${w/2}" y="790" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#5B5B76">Certificate No. {certno}  ·  MOTION-U Movement &amp; Wellness Club</text>
+  <text x="${w/2}" y="790" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#5B5B76">Certificate No. {certno}  ·  MOTION-U Mobility, Technology &amp; Industry On University Startup Incubator</text>
 </svg>`;
   const slug = eventTitle.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase();
   return {

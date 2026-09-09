@@ -5,16 +5,17 @@ export interface CategoryMeta {
 }
 
 const CATEGORY_META: Record<string, CategoryMeta> = {
-  Wellness: { icon: 'spa', chipClass: 'cat-wellness', solidVar: 'var(--cat-well)' },
-  Dance: { icon: 'music', chipClass: 'cat-dance', solidVar: 'var(--cat-dance)' },
-  Fitness: { icon: 'dumbbell', chipClass: 'cat-fitness', solidVar: 'var(--cat-fit)' },
-  'Martial Arts': { icon: 'hand-fist', chipClass: 'cat-martial', solidVar: 'var(--cat-martial)' },
+  Workshop: { icon: 'wrench', chipClass: 'cat-workshop', solidVar: 'var(--cat-workshop)' },
+  Hackathon: { icon: 'rocket', chipClass: 'cat-hackathon', solidVar: 'var(--cat-hackathon)' },
+  'Tech Talk': { icon: 'microphone', chipClass: 'cat-talk', solidVar: 'var(--cat-talk)' },
+  Seminar: { icon: 'graduation-cap', chipClass: 'cat-seminar', solidVar: 'var(--cat-seminar)' },
+  General: { icon: 'calendar-days', chipClass: 'cat-general', solidVar: 'var(--cat-general)' },
 }
 
 export const GENERAL_META: CategoryMeta = {
   icon: 'calendar-days',
-  chipClass: 'cat-dance',
-  solidVar: 'var(--primary)',
+  chipClass: 'cat-general',
+  solidVar: 'var(--cat-general)',
 }
 
 export function categoryMeta(category: string): CategoryMeta {
