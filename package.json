@@ -1,0 +1,16 @@
+{
+  "name": "motionu-events-management",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "npm run install:client && npm run install:server",
+    "install:client": "npm --prefix client install",
+    "install:server": "uv sync --directory server",
+    "dev": "concurrently -n server,client -c blue,green \"npm --prefix client run dev\" \"uv run --directory server uvicorn app.main:app --reload\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "uv run --directory server uvicorn app.main:app --reload"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

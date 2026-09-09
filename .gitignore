@@ -1,0 +1,24 @@
+# Node / client
+node_modules/
+client/node_modules/
+client/.next/
+client/out/
+client/.env*
+client/.vercel
+*.tsbuildinfo
+client/next-env.d.ts
+
+# Python / server
+server/.venv/
+__pycache__/
+*.py[cod]
+server/.env
+server/build/
+server/dist/
+*.egg-info
+server/alembic/__pycache__/
+
+# OS / misc
+.DS_Store
+*.pem
+*.log
