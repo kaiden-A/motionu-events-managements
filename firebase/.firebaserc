@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "motion-u-api"
+  },
+  "targets": {
+    "motion-u-api": {
+      "hosting": {
+        "events-api": [
+          "motion-u-events-api"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
