@@ -66,17 +66,27 @@ https://your-admin-host/participants?e=8f3c1a2e-...   ← this is EVENT_ID
 
 ## 3. Create the Apps Script
 
-1. Open your Google Form → **Extensions → Apps Script**.
+1. Open Apps Script:
+   - from the form: **Extensions → Apps Script**, or
+   - from the linked response Sheet: **Extensions → Apps Script**.
 2. Paste the sample from [`google-form.gs`](./google-form.gs).
 3. Fill in the constants:
    - `API_URL` — your API origin plus the public form path, e.g.
      `https://api.example.com/api/v1/public/events`
    - `EVENT_ID` — from step 2
    - `FORM_KEY` — the same value as `FORM_API_KEY`
-4. Adjust `QUESTION_KEYS` if your form's question titles differ.
-5. **Triggers** (clock icon) → **Add trigger** → function `onFormSubmit`,
-   event source **From form**, event type **On form submit** → Save.
+4. Adjust `QUESTION_KEYS` to match your form's question titles — matching
+   ignores case and extra whitespace.
+5. **Triggers** (clock icon) → **Add trigger** → function `onFormSubmit`:
+   - script bound to the Form → event source **From form**, event type
+     **On form submit**; or
+   - script bound to the Sheet → event source **From spreadsheet**, event type
+     **On form submit**.
 6. Authorize with your Google account.
+
+The sample reads `e.namedValues` when present (spreadsheet-bound triggers) and
+falls back to `e.response.getItemResponses()` (form-bound triggers, which have
+no `namedValues`).
 
 Submit a test response; the participant should appear on the Participants page
 within a few seconds.
@@ -88,7 +98,8 @@ within a few seconds.
 | `401 Invalid form key` | `FORM_KEY` and `FORM_API_KEY` differ |
 | `503 Public form API is not configured` | Set `FORM_API_KEY` and restart the API |
 | `404 Program not found` | `EVENT_ID` is wrong or the program was deleted |
-| `422` in Apps Script logs | Question titles don't match `QUESTION_KEYS` |
+| `422` with `input: ""` | Form-bound script reading `e.namedValues` (only spreadsheet triggers provide it) — use the sample's `collectAnswers()`, or bind the script to the response Sheet |
+| `422` with non-empty input | Question titles don't match `QUESTION_KEYS`; log `Object.keys(answers)` to see the actual titles |
 | Nothing in the roster, no error | Trigger not installed or not authorized |
 
 Apps Script errors are visible under **Executions** in the Apps Script editor.
