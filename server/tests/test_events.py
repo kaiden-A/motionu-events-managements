@@ -3,11 +3,12 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.models import ActivityLog, Event, Session
+from app.models import ActivityLog, Event, Participant, Session
 from app.schemas import EventIn, EventUpdateIn
 from app.services import events as event_svc
+from app.services import participants as participant_svc
 
-from tests.conftest import make_event_in, make_session_in
+from tests.conftest import make_event_in, make_participant_in, make_session_in
 
 
 async def _load_event(db, event_id):
@@ -18,6 +19,27 @@ async def _load_event(db, event_id):
 async def _sessions(db, event_id):
     stmt = select(Session).where(Session.event_id == event_id).order_by(Session.ordinal)
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def _add_participant(db, event):
+    loaded = await _load_event(db, event.id)
+    p = await participant_svc.add_participant(db, loaded, make_participant_in(), sub="u")
+    stmt = (
+        select(Participant)
+        .where(Participant.id == p.id)
+        .options(selectinload(Participant.attendance))
+    )
+    return (await db.execute(stmt)).scalar_one()
+
+
+async def _reload_participant(db, participant_id):
+    stmt = (
+        select(Participant)
+        .where(Participant.id == participant_id)
+        .options(selectinload(Participant.attendance))
+        .execution_options(populate_existing=True)
+    )
+    return (await db.execute(stmt)).scalar_one()
 
 
 async def _logs(db, event_id=None):
@@ -79,6 +101,77 @@ async def test_update_event_replaces_sessions(db):
     sessions = await _sessions(db, event.id)
     assert [s.label for s in sessions] == ["A", "B"]
     assert [s.ordinal for s in sessions] == [1, 2]
+
+
+async def test_update_event_replaces_sessions_from_router_dicts(db):
+    event = await event_svc.create_event(db, make_event_in(n_sessions=2), sub="user-1")
+    data = EventUpdateIn(
+        title="T",
+        sessions=[make_session_in(1, label="A"), make_session_in(2, label="B")],
+    )
+    await event_svc.update_event(
+        db, event, data.model_dump(exclude_unset=True), sub="user-1"
+    )
+    sessions = await _sessions(db, event.id)
+    assert [s.label for s in sessions] == ["A", "B"]
+    assert [s.ordinal for s in sessions] == [1, 2]
+
+
+async def test_update_event_sessions_preserve_passes(db):
+    event = await event_svc.create_event(db, make_event_in(n_sessions=2), sub="u")
+    participant = await _add_participant(db, event)
+    passes = {a.session_id: a.qr_token for a in participant.attendance}
+    session_ids = {s.id for s in await _sessions(db, event.id)}
+
+    await event_svc.update_event(
+        db,
+        event,
+        {"title": "T", "sessions": [make_session_in(1, label="A"), make_session_in(2, label="B")]},
+        sub="u",
+    )
+
+    sessions = await _sessions(db, event.id)
+    assert [s.label for s in sessions] == ["A", "B"]
+    assert {s.id for s in sessions} == session_ids
+    reloaded = await _reload_participant(db, participant.id)
+    assert {a.session_id: a.qr_token for a in reloaded.attendance} == passes
+
+
+async def test_update_event_added_session_backfills_passes(db):
+    event = await event_svc.create_event(db, make_event_in(n_sessions=1), sub="u")
+    participant = await _add_participant(db, event)
+
+    await event_svc.update_event(
+        db,
+        event,
+        {"sessions": [make_session_in(1, label="A"), make_session_in(2, label="B")]},
+        sub="u",
+    )
+
+    sessions = await _sessions(db, event.id)
+    assert [s.label for s in sessions] == ["A", "B"]
+    reloaded = await _reload_participant(db, participant.id)
+    assert len(reloaded.attendance) == 2
+    assert {a.session_id for a in reloaded.attendance} == {s.id for s in sessions}
+    assert all(a.qr_token for a in reloaded.attendance)
+
+
+async def test_update_event_removed_session_drops_its_pass(db):
+    event = await event_svc.create_event(db, make_event_in(n_sessions=3), sub="u")
+    participant = await _add_participant(db, event)
+    kept = {s.id for s in (await _sessions(db, event.id))[:2]}
+
+    await event_svc.update_event(
+        db,
+        event,
+        {"sessions": [make_session_in(1, label="A"), make_session_in(2, label="B")]},
+        sub="u",
+    )
+
+    sessions = await _sessions(db, event.id)
+    assert {s.id for s in sessions} == kept
+    reloaded = await _reload_participant(db, participant.id)
+    assert {a.session_id for a in reloaded.attendance} == kept
 
 
 async def test_update_event_logs_activity(db):

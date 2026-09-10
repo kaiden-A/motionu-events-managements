@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ActivityLog, Event, Session
+from app.models import ActivityLog, Attendance, Event, Participant, Session
 from app.schemas import EventIn, EventOut, SessionIn, SessionOut
+from app.services import tokens
 
 
 def _now_iso() -> str:
@@ -19,28 +20,68 @@ async def log_activity(
     await db.flush()
 
 
-async def _apply_sessions(db: AsyncSession, event_id: str, sessions: list[SessionIn]) -> None:
-    """Replace an event's sessions with fresh rows (never assigns the
-    relationship collection — that triggers lazy IO under async)."""
-    existing = (await db.execute(select(Session).where(Session.event_id == event_id))).scalars().all()
-    for row in existing:
+async def _apply_sessions(
+    db: AsyncSession, event_id: str, sessions: list[SessionIn | dict]
+) -> None:
+    """Sync an event's sessions positionally: existing rows keep their id (and
+    attendance/QR passes), extra rows are deleted, missing ones are appended
+    with attendance backfilled for the current roster. Accepts SessionIn
+    objects and plain dicts (router payloads via model_dump). Never assigns the
+    relationship collection — that triggers lazy IO under async."""
+    entries = [s if isinstance(s, SessionIn) else SessionIn(**s) for s in sessions]
+    existing = list(
+        (
+            await db.execute(
+                select(Session).where(Session.event_id == event_id).order_by(Session.ordinal)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for row in existing[len(entries):]:
         await db.delete(row)
-    await db.flush()
-    db.add_all(
-        [
-            Session(
+
+    added: list[Session] = []
+    for i, s in enumerate(entries):
+        if i < len(existing):
+            row = existing[i]
+            row.label = s.label
+            row.date = s.date
+            row.start_time = s.start_time
+            row.end_time = s.end_time
+            row.location = s.location
+        else:
+            row = Session(
                 event_id=event_id,
-                ordinal=i,
+                ordinal=i + 1,
                 label=s.label,
                 date=s.date,
                 start_time=s.start_time,
                 end_time=s.end_time,
                 location=s.location,
             )
-            for i, s in enumerate(sessions, start=1)
-        ]
-    )
+            db.add(row)
+            added.append(row)
     await db.flush()
+
+    if added:
+        participant_ids = (
+            await db.execute(select(Participant.id).where(Participant.event_id == event_id))
+        ).scalars().all()
+        today = _now_iso()
+        for row in added:
+            missed = bool(row.date) and row.date < today
+            for participant_id in participant_ids:
+                db.add(
+                    Attendance(
+                        session_id=row.id,
+                        participant_id=participant_id,
+                        attended=False if missed else None,
+                        qr_token=None if missed else tokens.generate_token(),
+                    )
+                )
+        await db.flush()
 
 
 async def create_event(db: AsyncSession, data: EventIn, sub: str) -> Event:
