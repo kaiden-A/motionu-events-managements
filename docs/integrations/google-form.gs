@@ -16,7 +16,7 @@
  * Repeat submissions (same email or student ID in the program) are ignored.
  */
 
-const API_URL = 'https://YOUR-BACKEND-HOST/public/events';
+const API_URL = 'https://YOUR-BACKEND-HOST/api/v1/public/events';
 const EVENT_ID = 'YOUR-PROGRAM-UUID';
 const FORM_KEY = 'YOUR-FORM-API-KEY';
 

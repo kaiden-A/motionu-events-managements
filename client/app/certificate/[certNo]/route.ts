@@ -48,7 +48,7 @@ export async function GET(
   }
 
   const upstream = await fetch(
-    `${BACKEND_URL}/certificates/download/${encodeURIComponent(certNo)}?token=${encodeURIComponent(token)}`,
+    `${BACKEND_URL}/api/v1/certificates/download/${encodeURIComponent(certNo)}?token=${encodeURIComponent(token)}`,
     { redirect: 'follow', cache: 'no-store' }
   )
 

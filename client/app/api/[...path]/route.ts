@@ -20,7 +20,7 @@ async function forward(request: NextRequest, method: string) {
   }
 
   const path = request.nextUrl.pathname.replace(/^\/api/, '') || '/'
-  const url = `${BACKEND_URL}${path}${request.nextUrl.search}`
+  const url = `${BACKEND_URL}/api/v1${path}${request.nextUrl.search}`
 
   const init: RequestInit = {
     method,

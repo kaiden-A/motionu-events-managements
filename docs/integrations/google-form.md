@@ -12,7 +12,7 @@ nothing is duplicated.
 ```
 Google Form submission
   └─ Apps Script onFormSubmit trigger
-       └─ POST /public/events/{event_id}/participants   (X-Form-Key header)
+       └─ POST /api/v1/public/events/{event_id}/participants   (X-Form-Key header)
             └─ Participant + attendance/QR rows created in the program
 ```
 
@@ -25,9 +25,12 @@ emailed automatically — use **Email all passes**, or the per-participant
 | | |
 |---|---|
 | Method | `POST` |
-| Path | `/public/events/{event_id}/participants` |
+| Path | `/api/v1/public/events/{event_id}/participants` |
 | Header | `X-Form-Key: <FORM_API_KEY>` |
 | Body | `{"name": "...", "student_id": "...", "email": "...", "phone": "..."}` — `phone` optional |
+
+All API routes live under the `/api/v1` prefix. The health endpoint is
+unprefixed at `/health`.
 
 Responses:
 
@@ -66,7 +69,8 @@ https://your-admin-host/participants?e=8f3c1a2e-...   ← this is EVENT_ID
 1. Open your Google Form → **Extensions → Apps Script**.
 2. Paste the sample from [`google-form.gs`](./google-form.gs).
 3. Fill in the constants:
-   - `API_URL` — your API origin, e.g. `https://api.example.com/public/events`
+   - `API_URL` — your API origin plus the public form path, e.g.
+     `https://api.example.com/api/v1/public/events`
    - `EVENT_ID` — from step 2
    - `FORM_KEY` — the same value as `FORM_API_KEY`
 4. Adjust `QUESTION_KEYS` if your form's question titles differ.
