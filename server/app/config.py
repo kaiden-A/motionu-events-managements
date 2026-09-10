@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     public_app_url: str = "http://localhost:3000"  # frontend origin used in emails
     download_secret: str | None = None  # HMAC key for cert links; falls back to R2 secret
 
+    # --- Public form API (Google Apps Script webhook) ---
+    form_api_key: str | None = None  # shared secret sent as X-Form-Key
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property

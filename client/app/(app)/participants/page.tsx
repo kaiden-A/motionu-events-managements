@@ -271,8 +271,12 @@ function ParticipantsBody() {
   const [passP, setPassP] = useState<ParticipantItem | null>(null)
   const [emailFor, setEmailFor] = useState<{ p: ParticipantItem; a: AttendanceItem } | null>(null)
   const [batch, setBatch] = useState<{ running: boolean; done: number; total: number } | null>(null)
+  const [passBatch, setPassBatch] = useState<{ running: boolean; done: number; total: number } | null>(null)
   const [batchResult, setBatchResult] = useState<{
-    issued: { name: string; cert_no: string }[]
+    title: string
+    subtitle?: string
+    doneLabel: string
+    done: { name: string; meta: string }[]
     skipped: { name: string; reason: string }[]
   } | null>(null)
   const addOnce = useRef(false)
@@ -461,9 +465,64 @@ function ParticipantsBody() {
       setBatch({ running: true, done: i + 1, total: roster.length })
     }
     setBatch(null)
-    setBatchResult({ issued, skipped })
+    setBatchResult({
+      title: 'Certificate issuing complete',
+      subtitle: `${event.title} — issued ${issued.length}, skipped ${skipped.length}`,
+      doneLabel: 'Issued',
+      done: issued.map((x) => ({ name: x.name, meta: x.cert_no })),
+      skipped,
+    })
     toast(
       `Certificates issued: ${issued.length} · Skipped: ${skipped.length}`,
+      skipped.length > 0 ? 'info' : 'success'
+    )
+    reloadRoster(event.id)
+  }
+
+  const sendAllPasses = async () => {
+    if (!event || passBatch?.running) return
+    const ok = await confirm(
+      `Email QR passes to every participant in "${event.title}"? Anyone with no upcoming pass or who already received one is skipped automatically.`,
+      { confirmLabel: 'Email all' }
+    )
+    if (!ok) return
+
+    const today = new Date().toISOString().slice(0, 10)
+    const sessionDate = (id: string) => event.sessions.find((s) => s.id === id)?.date ?? ''
+    const sent: { name: string; label: string }[] = []
+    const skipped: { name: string; reason: string }[] = []
+    setPassBatch({ running: true, done: 0, total: roster.length })
+    for (const [i, p] of roster.entries()) {
+      const a = p.attendance.find(
+        (x) => x.attended === null && x.qr_token && sessionDate(x.session_id) >= today
+      )
+      if (!a) {
+        skipped.push({ name: p.name, reason: 'No upcoming QR pass available.' })
+      } else if (a.qr_sent_at) {
+        skipped.push({ name: p.name, reason: `Pass already emailed — ${a.label}.` })
+      } else {
+        try {
+          const r = await api.sendPass(event.id, p.id, a.session_id)
+          sent.push({ name: p.name, label: r.mode === 'simulated' ? `${a.label} (simulated)` : a.label })
+        } catch (e) {
+          skipped.push({
+            name: p.name,
+            reason: e instanceof Error ? e.message : 'Send failed',
+          })
+        }
+      }
+      setPassBatch({ running: true, done: i + 1, total: roster.length })
+    }
+    setPassBatch(null)
+    setBatchResult({
+      title: 'QR pass sending complete',
+      subtitle: `${event.title} — sent ${sent.length}, skipped ${skipped.length}`,
+      doneLabel: 'Sent',
+      done: sent.map((x) => ({ name: x.name, meta: x.label })),
+      skipped,
+    })
+    toast(
+      `QR passes sent: ${sent.length} · Skipped: ${skipped.length}`,
       skipped.length > 0 ? 'info' : 'success'
     )
     reloadRoster(event.id)
@@ -533,13 +592,23 @@ function ParticipantsBody() {
         <div className="flex flex-wrap gap-2 md:ml-auto">
           <button
             onClick={() => void issueAll()}
-            disabled={!event || roster.length === 0 || batch?.running}
+            disabled={!event || roster.length === 0 || batch?.running || passBatch?.running}
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover-soft disabled:opacity-50"
           >
             <Icon name="award" size={13} />
             {batch?.running
               ? `Issuing ${batch.done}/${batch.total}…`
               : 'Issue all certificates'}
+          </button>
+          <button
+            onClick={() => void sendAllPasses()}
+            disabled={!event || roster.length === 0 || passBatch?.running || batch?.running}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover-soft disabled:opacity-50"
+          >
+            <Icon name="envelope" size={13} />
+            {passBatch?.running
+              ? `Emailing ${passBatch.done}/${passBatch.total}…`
+              : 'Email all passes'}
           </button>
           <button
             onClick={openAdd}
@@ -804,12 +873,8 @@ function ParticipantsBody() {
 
       {batchResult && (
         <Modal
-          title="Certificate issuing complete"
-          subtitle={
-            event
-              ? `${event.title} — issued ${batchResult.issued.length}, skipped ${batchResult.skipped.length}`
-              : undefined
-          }
+          title={batchResult.title}
+          subtitle={batchResult.subtitle}
           onClose={() => setBatchResult(null)}
           actions={
             <BtnPrimary className="w-full" onClick={() => setBatchResult(null)}>
@@ -818,18 +883,18 @@ function ParticipantsBody() {
           }
         >
           <div className="space-y-4 p-5">
-            {batchResult.issued.length > 0 && (
+            {batchResult.done.length > 0 && (
               <div>
                 <p
                   className="mb-2 text-xs font-semibold uppercase tracking-wide"
                   style={{ color: 'var(--ink-soft)' }}
                 >
-                  Issued ({batchResult.issued.length})
+                  {batchResult.doneLabel} ({batchResult.done.length})
                 </p>
                 <div className="space-y-1.5">
-                  {batchResult.issued.map((r) => (
+                  {batchResult.done.map((r, i) => (
                     <div
-                      key={r.cert_no}
+                      key={`${r.name}-${r.meta}-${i}`}
                       className="surface-2 flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-xs"
                     >
                       <span className="flex min-w-0 items-center gap-2">
@@ -837,7 +902,7 @@ function ParticipantsBody() {
                         <span className="truncate font-medium">{r.name}</span>
                       </span>
                       <span className="code-str shrink-0" style={{ color: 'var(--ink-soft)' }}>
-                        {r.cert_no}
+                        {r.meta}
                       </span>
                     </div>
                   ))}
@@ -870,7 +935,7 @@ function ParticipantsBody() {
                 </div>
               </div>
             )}
-            {batchResult.issued.length === 0 && batchResult.skipped.length === 0 && (
+            {batchResult.done.length === 0 && batchResult.skipped.length === 0 && (
               <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>
                 No participants to process.
               </p>

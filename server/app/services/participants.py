@@ -1,7 +1,8 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.models import Attendance, Event, Participant, Session
@@ -80,6 +81,25 @@ async def add_participant(
         db, "register", f"{data.name} added to {event.title}", event.id, sub
     )
     return participant
+
+
+async def find_duplicate(
+    db: AsyncSession, event_id: str, data: ParticipantIn
+) -> Participant | None:
+    """Existing roster member in the same program with the same email or
+    student ID (case-insensitive). Keeps the public form webhook idempotent."""
+    stmt = (
+        select(Participant)
+        .where(
+            Participant.event_id == event_id,
+            or_(
+                func.lower(Participant.email) == data.email.strip().lower(),
+                func.lower(Participant.student_id) == data.student_id.strip().lower(),
+            ),
+        )
+        .options(selectinload(Participant.attendance))
+    )
+    return (await db.execute(stmt)).scalars().first()
 
 
 async def find_attendance_by_token(

@@ -1,8 +1,9 @@
+import hmac
 import time
 
 import httpx
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKSet, get_unverified_header
 from pydantic import BaseModel
@@ -123,3 +124,18 @@ def require_admin(user: UserPrincipal = Depends(get_current_user)) -> UserPrinci
             detail="Admin role required",
         )
     return user
+
+
+def require_form_key(x_form_key: str | None = Header(default=None)) -> None:
+    """Guard the public form webhook with the shared FORM_API_KEY secret."""
+    expected = get_settings().form_api_key
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Public form API is not configured",
+        )
+    if not x_form_key or not hmac.compare_digest(x_form_key, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid form key",
+        )

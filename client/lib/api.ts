@@ -55,9 +55,10 @@ export const api = {
       body: JSON.stringify({ session_id, attended }),
     }),
   sendPass: (eventId: string, pid: string, sessionId: string) =>
-    req<{ ok: boolean }>(`/events/${eventId}/participants/${pid}/send-pass/${sessionId}`, {
-      method: 'POST',
-    }),
+    req<{ ok: boolean; sent: boolean; mode: 'live' | 'simulated'; to: string; session_id: string }>(
+      `/events/${eventId}/participants/${pid}/send-pass/${sessionId}`,
+      { method: 'POST' }
+    ),
   unlockPass: (eventId: string, pid: string, sessionId: string) =>
     req<ParticipantItem>(`/events/${eventId}/participants/${pid}/unlock/${sessionId}`, {
       method: 'POST',
