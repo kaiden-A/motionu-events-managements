@@ -34,13 +34,6 @@ def _attendance_for(participant, session):
     return next(a for a in participant.attendance if a.session_id == session.id)
 
 
-async def _mark_attended(db, participant, session):
-    a = _attendance_for(participant, session)
-    a.attended = True
-    a.joined_by = "manual"
-    await db.flush()
-
-
 async def test_resolve_token_found(db):
     event, participant = await _setup(db)
     session = _sorted_sessions(event)[0]
@@ -56,28 +49,6 @@ async def test_resolve_token_not_found(db):
     with pytest.raises(checkin_svc.CheckinError) as exc:
         await checkin_svc.resolve_token(db, "missing-token")
     assert exc.value.status_code == 404
-
-
-async def test_check_gate_passes_when_prior_attended(db):
-    event, participant = await _setup(db, n_sessions=2)
-    sessions = _sorted_sessions(event)
-    await _mark_attended(db, participant, sessions[0])
-    await checkin_svc.check_gate(db, event, sessions[1], participant)
-
-
-async def test_check_gate_blocks_when_prior_missing(db):
-    event, participant = await _setup(db, n_sessions=2)
-    sessions = _sorted_sessions(event)
-    with pytest.raises(checkin_svc.CheckinError) as exc:
-        await checkin_svc.check_gate(db, event, sessions[1], participant)
-    assert exc.value.status_code == 409
-    assert "Session 1" in exc.value.detail
-
-
-async def test_check_gate_first_session_always_passes(db):
-    event, participant = await _setup(db, n_sessions=3)
-    sessions = _sorted_sessions(event)
-    await checkin_svc.check_gate(db, event, sessions[0], participant)
 
 
 async def test_mark_attended_idempotent(db):
@@ -114,14 +85,13 @@ async def test_checkin_already_attended_raises(db):
     assert "already attended" in exc.value.detail
 
 
-async def test_checkin_gate_blocked(db):
+async def test_checkin_later_session_without_prior(db):
     event, participant = await _setup(db, n_sessions=2)
     sessions = _sorted_sessions(event)
-    unlocked = await participant_svc.unlock_next_pass(db, participant, event, sessions[0])
-    token = unlocked.qr_token
-    with pytest.raises(checkin_svc.CheckinError) as exc:
-        await checkin_svc.checkin(db, token, actor_sub="scanner-1")
-    assert exc.value.status_code == 409
+    token = _attendance_for(participant, sessions[1]).qr_token
+    result = await checkin_svc.checkin(db, token, actor_sub="scanner-1")
+    assert result["session"].id == sessions[1].id
+    assert result["participant"].attendance[1].attended is True
 
 
 async def test_checkin_not_found(db):

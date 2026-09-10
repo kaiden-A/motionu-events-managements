@@ -37,21 +37,6 @@ async def resolve_token(db: AsyncSession, token: str) -> tuple[Attendance, Sessi
     return attendance, session, participant, event
 
 
-async def check_gate(db: AsyncSession, event: Event, session: Session, participant: Participant) -> None:
-    """Hard gate: every session with a lower ordinal must already be attended."""
-    sessions = sorted(event.sessions, key=lambda s: s.ordinal)
-    attended_by_session = {a.session_id: a.attended for a in participant.attendance}
-    missing = [
-        s for s in sessions
-        if s.ordinal < session.ordinal and attended_by_session.get(s.id) is not True
-    ]
-    if missing:
-        labels = ", ".join(s.label for s in missing)
-        raise CheckinError(
-            f"{participant.name} must attend {labels} before this session.", 409
-        )
-
-
 async def mark_attended(
     db: AsyncSession, attendance: Attendance, joined_by: str = "qr"
 ) -> bool:
@@ -74,7 +59,6 @@ async def mark_attended(
 
 async def checkin(db: AsyncSession, token: str, actor_sub: str) -> dict:
     attendance, session, participant, event = await resolve_token(db, token)
-    await check_gate(db, event, session, participant)
 
     marked = await mark_attended(db, attendance, joined_by="qr")
     if not marked:

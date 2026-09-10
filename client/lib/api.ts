@@ -1,9 +1,11 @@
 'use client'
 
 import type {
+  CertField,
   CheckinResult,
   DashboardData,
   EventItem,
+  IssueResult,
   ParticipantItem,
   TemplateInfo,
 } from './types'
@@ -56,6 +58,10 @@ export const api = {
     req<{ ok: boolean }>(`/events/${eventId}/participants/${pid}/send-pass/${sessionId}`, {
       method: 'POST',
     }),
+  unlockPass: (eventId: string, pid: string, sessionId: string) =>
+    req<ParticipantItem>(`/events/${eventId}/participants/${pid}/unlock/${sessionId}`, {
+      method: 'POST',
+    }),
 
   checkin: (token: string) =>
     req<CheckinResult>('/checkin', { method: 'POST', body: JSON.stringify({ token }) }),
@@ -73,8 +79,13 @@ export const api = {
     }),
   removeTemplate: (eventId: string) =>
     req<unknown>(`/certificates/template/${eventId}`, { method: 'DELETE' }),
+  saveTemplateFields: (eventId: string, fields: CertField[]) =>
+    req<TemplateInfo>(`/certificates/template/${eventId}/fields`, {
+      method: 'PUT',
+      body: JSON.stringify({ fields }),
+    }),
   issueCertificate: (eventId: string, pid: string) =>
-    req<{ cert_no: string }>(`/certificates/issue/${eventId}/${pid}`, { method: 'POST' }),
+    req<IssueResult>(`/certificates/issue/${eventId}/${pid}`, { method: 'POST' }),
   revokeCertificate: (eventId: string, pid: string) =>
     req<unknown>(`/certificates/revoke/${eventId}/${pid}`, { method: 'DELETE' }),
 }

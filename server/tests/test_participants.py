@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.models import Attendance, Event, Participant
+from app.schemas import EventIn, SessionIn
 from app.services import events as event_svc
 from app.services import participants as participant_svc
 from app.services import tokens
@@ -11,6 +12,30 @@ from tests.conftest import make_event_in, make_participant_in
 
 async def _make_event_with_sessions(db, n_sessions=2, **kwargs):
     event = await event_svc.create_event(db, make_event_in(n_sessions=n_sessions, **kwargs), sub="u")
+    stmt = select(Event).where(Event.id == event.id).options(selectinload(Event.sessions))
+    return (await db.execute(stmt)).scalar_one()
+
+
+async def _make_event_with_dates(db, dates):
+    event = await event_svc.create_event(
+        db,
+        EventIn(
+            title="Dated",
+            category="General",
+            description="",
+            capacity=10,
+            sessions=[
+                SessionIn(
+                    label=f"Session {i}",
+                    date=d,
+                    start_time="10:00",
+                    end_time="11:00",
+                )
+                for i, d in enumerate(dates, start=1)
+            ],
+        ),
+        sub="u",
+    )
     stmt = select(Event).where(Event.id == event.id).options(selectinload(Event.sessions))
     return (await db.execute(stmt)).scalar_one()
 
@@ -49,14 +74,25 @@ async def test_add_participant_creates_attendance_rows(db):
     assert {a.session_id for a in p.attendance} == {s.id for s in event.sessions}
 
 
-async def test_add_participant_first_session_gets_token_only(db):
+async def test_add_participant_upcoming_sessions_get_tokens(db):
     event = await _make_event_with_sessions(db, n_sessions=3)
     p = await _add(db, event)
     sessions = sorted(event.sessions, key=lambda s: s.ordinal)
     by_session = {a.session_id: a for a in p.attendance}
-    assert by_session[sessions[0].id].qr_token is not None
-    assert by_session[sessions[1].id].qr_token is None
-    assert by_session[sessions[2].id].qr_token is None
+    for s in sessions:
+        assert by_session[s.id].qr_token is not None
+        assert by_session[s.id].attended is None
+
+
+async def test_add_participant_marks_past_sessions_missed(db):
+    event = await _make_event_with_dates(db, ["2020-01-01", "2099-01-01"])
+    p = await _add(db, event)
+    sessions = sorted(event.sessions, key=lambda s: s.ordinal)
+    by_session = {a.session_id: a for a in p.attendance}
+    assert by_session[sessions[0].id].attended is False
+    assert by_session[sessions[0].id].qr_token is None
+    assert by_session[sessions[1].id].attended is None
+    assert by_session[sessions[1].id].qr_token is not None
 
 
 async def test_add_participant_logs_activity(db):
@@ -98,11 +134,22 @@ async def test_unlock_next_pass_no_next_returns_none(db):
     assert await participant_svc.unlock_next_pass(db, p, event, session) is None
 
 
-async def test_unlock_next_pass_generates_token(db):
+async def test_unlock_next_pass_returns_token(db):
     event = await _make_event_with_sessions(db, n_sessions=2)
     p = await _add(db, event)
     sessions = sorted(event.sessions, key=lambda s: s.ordinal)
     unlocked = await participant_svc.unlock_next_pass(db, p, event, sessions[0])
+    assert unlocked is not None
+    assert unlocked.qr_token is not None
+    assert unlocked.qr_sent_at is None
+
+
+async def test_unlock_pass_generates_token_for_locked_row(db):
+    event = await _make_event_with_dates(db, ["2020-01-01", "2099-01-01"])
+    p = await _add(db, event)
+    sessions = sorted(event.sessions, key=lambda s: s.ordinal)
+    assert p.attendance[0].qr_token is None
+    unlocked = await participant_svc.unlock_pass(db, p, sessions[0])
     assert unlocked is not None
     assert unlocked.qr_token is not None
     assert unlocked.qr_sent_at is None

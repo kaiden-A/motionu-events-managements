@@ -123,3 +123,28 @@ async def test_to_event_out(db):
     assert out.total_sessions == 2
     assert [s.ordinal for s in out.sessions] == [1, 2]
     assert out.created_at == loaded.created_at
+
+
+async def test_create_event_cert_min_sessions(db):
+    event = await event_svc.create_event(
+        db, make_event_in(n_sessions=3, cert_min_sessions=2), sub="u"
+    )
+    loaded = await _load_event(db, event.id)
+    assert loaded.cert_min_sessions == 2
+    assert event_svc.to_event_out(loaded).cert_min_sessions == 2
+
+
+async def test_update_event_cert_min_sessions_clamped(db):
+    event = await event_svc.create_event(db, make_event_in(n_sessions=2), sub="u")
+    await event_svc.update_event(db, event, {"cert_min_sessions": 5}, sub="u")
+    loaded = await _load_event(db, event.id)
+    assert loaded.cert_min_sessions == 2
+
+
+async def test_update_event_clears_cert_min_sessions(db):
+    event = await event_svc.create_event(
+        db, make_event_in(n_sessions=2, cert_min_sessions=1), sub="u"
+    )
+    await event_svc.update_event(db, event, {"cert_min_sessions": None}, sub="u")
+    loaded = await _load_event(db, event.id)
+    assert loaded.cert_min_sessions is None

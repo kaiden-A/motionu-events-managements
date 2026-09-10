@@ -39,6 +39,19 @@ def presign_get(key: str, expires_in: int = 3600) -> str:
     )
 
 
+def get_bytes(key: str) -> bytes:
+    settings = get_settings()
+    response = _s3().get_object(Bucket=settings.bucket, Key=key)
+    return response["Body"].read()
+
+
+def put_bytes(key: str, data: bytes, content_type: str) -> None:
+    settings = get_settings()
+    _s3().put_object(
+        Bucket=settings.bucket, Key=key, Body=data, ContentType=content_type
+    )
+
+
 def delete_object(key: str) -> None:
     settings = get_settings()
     _s3().delete_object(Bucket=settings.bucket, Key=key)

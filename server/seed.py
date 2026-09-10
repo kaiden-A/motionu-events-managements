@@ -1,6 +1,5 @@
 """Seed the database with sample data mirroring sample/js/data.js,
-including one 2-day (multi-session) event to exercise the gated
-sequential-unlock flow. Safe to re-run: skips when events exist."""
+including multi-session events. Safe to re-run: skips when events exist."""
 
 import asyncio
 from datetime import datetime, timezone
@@ -99,8 +98,8 @@ async def main() -> None:
                     db, event, ParticipantIn(name=name, student_id=sid, email=email), SUB
                 )
                 await db.flush()
-                # mark: first person attends session 1 (unlocks session 2 token),
-                # second person attends nothing (pending)
+                # first person attends session 1 (next pass already issued and
+                # gets sent on join), second person attends nothing
                 if i == 0:
                     stmt = select(Attendance).where(
                         Attendance.session_id == sessions[0].id,

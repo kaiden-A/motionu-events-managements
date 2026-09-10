@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { CertFieldPicker } from '@/components/CertFieldPicker'
 import { Icon, type IconName } from '@/components/Icon'
+import { TemplateThumb } from '@/components/TemplateThumb'
 import { BtnPrimary, EmptyState, IconBtn } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { useConfirm, useToast } from '@/components/feedback'
@@ -22,6 +24,7 @@ export default function CertificatesPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
   const [preview, setPreview] = useState<{ ev: EventItem; t: TemplateInfo } | null>(null)
+  const [picker, setPicker] = useState<{ ev: EventItem; t: TemplateInfo } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const targetRef = useRef('')
 
@@ -99,8 +102,12 @@ export default function CertificatesPage() {
         body: file,
       })
       if (!put.ok) throw new Error(`R2 upload failed (${put.status})`)
-      await api.confirmTemplate(eventId, presign.r2_key, file.name, file.type, file.size)
-      toast('Template saved.')
+      const t = await api.confirmTemplate(eventId, presign.r2_key, file.name, file.type, file.size)
+      toast(
+        file.type.startsWith('image/') && t.file_type === 'application/pdf'
+          ? 'Template saved — converted to PDF for field positioning.'
+          : 'Template saved.'
+      )
       setPreview(null)
       await reload()
     } catch (e) {
@@ -171,7 +178,6 @@ export default function CertificatesPage() {
             .map((ev) => {
               const cat = categoryMeta(ev.category)
               const t = templates[ev.id] ?? null
-              const isImg = t ? t.file_type.startsWith('image/') : false
               return (
                 <div key={ev.id} className="surface flex flex-col overflow-hidden rounded-2xl border border-border">
                   <div className="flex flex-1 flex-col p-5">
@@ -204,19 +210,7 @@ export default function CertificatesPage() {
                       style={{ background: 'var(--surface-2)' }}
                     >
                       {t ? (
-                        isImg ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={t.download_url ?? ''}
-                            alt="template"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1" style={{ color: 'var(--danger)' }}>
-                            <Icon name="file-pdf" size={24} />
-                            <span className="text-[10px] font-medium">PDF</span>
-                          </div>
-                        )
+                        <TemplateThumb template={t} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex flex-col items-center gap-1.5" style={{ color: 'var(--border-strong)' }}>
                           <Icon name="file-circle-question" size={24} />
@@ -231,6 +225,10 @@ export default function CertificatesPage() {
                           {t.file_name}
                           <br />
                           {fmtBytes(t.file_size)} · uploaded {formatDateShort(t.uploaded_at)}
+                          <br />
+                          {ev.cert_min_sessions === null
+                            ? 'Certificate: all sessions attended'
+                            : `Certificate: at least ${ev.cert_min_sessions} of ${ev.total_sessions} sessions`}
                         </>
                       ) : (
                         'No template uploaded for this program yet.'
@@ -247,6 +245,14 @@ export default function CertificatesPage() {
                             <Icon name="eye" size={11} />
                             Preview
                           </button>
+                          {t.file_type === 'application/pdf' && (
+                            <IconBtn
+                              label="Position fields"
+                              icon="layer-group"
+                              tone="primary"
+                              onClick={() => setPicker({ ev, t })}
+                            />
+                          )}
                           <IconBtn
                             label="Download template"
                             icon="download"
@@ -322,6 +328,20 @@ export default function CertificatesPage() {
               </p>
             )}
           </div>
+        </Modal>
+      )}
+    {picker && (
+        <Modal
+          title="Position fields"
+          subtitle={`${picker.t.file_name} · ${picker.ev.title}`}
+          onClose={() => setPicker(null)}
+          maxWidth="max-w-3xl"
+        >
+          <CertFieldPicker
+            template={picker.t}
+            onClose={() => setPicker(null)}
+            onSaved={() => void reload()}
+          />
         </Modal>
       )}
     </div>

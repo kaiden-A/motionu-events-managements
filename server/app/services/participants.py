@@ -62,14 +62,16 @@ async def add_participant(
     db.add(participant)
     await db.flush()
 
+    today = event_svc._now_iso()
     sessions = _sort_sessions(event)
-    for i, s in enumerate(sessions):
-        token = tokens.generate_token() if i == 0 else None
+    for s in sessions:
+        missed = bool(s.date) and s.date < today
         db.add(
             Attendance(
                 session_id=s.id,
                 participant_id=participant.id,
-                qr_token=token,
+                attended=False if missed else None,
+                qr_token=None if missed else tokens.generate_token(),
             )
         )
     await db.flush()
@@ -95,6 +97,24 @@ async def next_session_after(db: AsyncSession, event: Event, session: Session) -
     return None
 
 
+async def unlock_pass(
+    db: AsyncSession, participant: Participant, session: Session
+) -> Attendance | None:
+    """Generate the token for a specific session if it doesn't have one yet."""
+    stmt = select(Attendance).where(
+        Attendance.session_id == session.id,
+        Attendance.participant_id == participant.id,
+    )
+    a = (await db.execute(stmt)).scalar_one_or_none()
+    if a is None:
+        return None
+    if a.qr_token is None:
+        a.qr_token = tokens.generate_token()
+        a.qr_sent_at = None
+        await db.flush()
+    return a
+
+
 async def unlock_next_pass(
     db: AsyncSession, participant: Participant, event: Event, session: Session
 ) -> Attendance | None:
@@ -102,17 +122,7 @@ async def unlock_next_pass(
     nxt = await next_session_after(db, event, session)
     if nxt is None:
         return None
-    stmt = select(Attendance).where(
-        Attendance.session_id == nxt.id,
-        Attendance.participant_id == participant.id,
-    )
-    a = (await db.execute(stmt)).scalar_one_or_none()
-    if a is None or a.qr_token is not None:
-        return a if a else None
-    a.qr_token = tokens.generate_token()
-    a.qr_sent_at = None
-    await db.flush()
-    return a
+    return await unlock_pass(db, participant, nxt)
 
 
 async def deliver_qr_pass(

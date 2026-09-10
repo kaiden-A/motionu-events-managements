@@ -144,6 +144,14 @@ function EventCard({
               ends {formatDate(last?.date ?? session?.date ?? '')}
             </span>
           )}
+          {ev.sessions.length > 1 && (
+            <span className="chip chip-muted" title="Attendance required for a certificate">
+              <Icon name="award" size={11} className="mr-1" />
+              {ev.cert_min_sessions === null
+                ? 'Cert: all sessions'
+                : `Cert: ${ev.cert_min_sessions}+ of ${ev.total_sessions}`}
+            </span>
+          )}
         </div>
         <div className="mt-auto">
           <div className="mb-1 flex justify-between text-xs" style={{ color: 'var(--ink-soft)' }}>
@@ -268,7 +276,14 @@ function EventsBody() {
   const [filter, setFilter] = useState<'all' | EventStatus>('all')
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<EventItem | null>(null)
-  const [form, setForm] = useState({ title: '', category: 'General', description: '', capacity: 30 })
+  const [form, setForm] = useState({
+    title: '',
+    category: 'General',
+    description: '',
+    capacity: 30,
+    certAll: true,
+    certMin: 1,
+  })
   const [sessions, setSessions] = useState<SessionDraft[]>([blankSession()])
   const [saving, setSaving] = useState(false)
 
@@ -301,14 +316,21 @@ function EventsBody() {
 
   const openNew = () => {
     setEditing(null)
-    setForm({ title: '', category: 'General', description: '', capacity: 30 })
+    setForm({ title: '', category: 'General', description: '', capacity: 30, certAll: true, certMin: 1 })
     setSessions([blankSession()])
     setShowModal(true)
   }
 
   const openEdit = (ev: EventItem) => {
     setEditing(ev)
-    setForm({ title: ev.title, category: ev.category, description: ev.description, capacity: ev.capacity })
+    setForm({
+      title: ev.title,
+      category: ev.category,
+      description: ev.description,
+      capacity: ev.capacity,
+      certAll: ev.cert_min_sessions === null,
+      certMin: ev.cert_min_sessions ?? 1,
+    })
     setSessions(
       ev.sessions.map((s: SessionItem) => ({
         label: s.label,
@@ -325,7 +347,16 @@ function EventsBody() {
     if (!form.title.trim() || sessions.length === 0 || !sessions[0].date) return
     setSaving(true)
     try {
-      const payload = { ...form, sessions }
+      const payload = {
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        capacity: form.capacity,
+        cert_min_sessions: form.certAll
+          ? null
+          : Math.min(Math.max(1, form.certMin || 1), sessions.length),
+        sessions,
+      }
       if (editing) await api.updateEvent(editing.id, payload)
       else await api.createEvent(payload)
       setShowModal(false)
@@ -494,6 +525,44 @@ function EventsBody() {
               </div>
             </div>
             <SessionEditor sessions={sessions} onChange={setSessions} />
+            <div className="rounded-xl border border-border p-3">
+              <p className="text-sm font-medium">Certificate requirement</p>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--ink-soft)' }}>
+                How many sessions must a participant attend to receive a certificate?
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="lbl" htmlFor="certRequirement">
+                    Requirement
+                  </label>
+                  <select
+                    id="certRequirement"
+                    value={form.certAll ? 'all' : 'min'}
+                    onChange={(e) => setForm({ ...form, certAll: e.target.value === 'all' })}
+                    className="inp"
+                  >
+                    <option value="all">All sessions</option>
+                    <option value="min">At least…</option>
+                  </select>
+                </div>
+                {!form.certAll && (
+                  <div>
+                    <label className="lbl" htmlFor="certMinSessions">
+                      Sessions required
+                    </label>
+                    <input
+                      id="certMinSessions"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, sessions.length)}
+                      value={form.certMin}
+                      onChange={(e) => setForm({ ...form, certMin: Number(e.target.value) })}
+                      className="inp"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             <div>
               <label className="lbl" htmlFor="eventDescription">
                 Description

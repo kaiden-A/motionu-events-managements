@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------- Events / Sessions ----------------
@@ -22,7 +22,14 @@ class EventIn(BaseModel):
     category: str = Field(default="General", max_length=50)
     description: str = ""
     capacity: int = Field(default=1, ge=1)
+    cert_min_sessions: int | None = Field(default=None, ge=1)
     sessions: list[SessionIn] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _cert_min_within_sessions(self):
+        if self.cert_min_sessions is not None and self.cert_min_sessions > len(self.sessions):
+            raise ValueError("cert_min_sessions cannot exceed the number of sessions")
+        return self
 
 
 class EventUpdateIn(BaseModel):
@@ -30,6 +37,7 @@ class EventUpdateIn(BaseModel):
     category: str | None = None
     description: str | None = None
     capacity: int | None = Field(default=None, ge=1)
+    cert_min_sessions: int | None = Field(default=None, ge=1)
     sessions: list[SessionIn] | None = None
 
 
@@ -39,6 +47,7 @@ class EventOut(BaseModel):
     category: str
     description: str
     capacity: int
+    cert_min_sessions: int | None = None
     created_at: datetime
     sessions: list[SessionOut]
     total_sessions: int

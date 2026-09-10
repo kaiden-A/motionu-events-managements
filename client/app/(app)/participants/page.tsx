@@ -45,15 +45,33 @@ function QrPassModal({
   p,
   onClose,
   onEmail,
+  onUnlocked,
 }: {
   ev: EventItem
   p: ParticipantItem
   onClose: () => void
   onEmail: (a: AttendanceItem) => void
+  onUnlocked: (p: ParticipantItem) => void
 }) {
+  const { toast } = useToast()
   const svgRefs = useRef<Record<string, SVGSVGElement | null>>({})
+  const [unlocking, setUnlocking] = useState<string | null>(null)
+
+  const unlock = async (a: AttendanceItem) => {
+    setUnlocking(a.session_id)
+    try {
+      const updated = await api.unlockPass(ev.id, p.id, a.session_id)
+      toast(`Pass unlocked for ${a.label}.`)
+      onUnlocked(updated)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Unlock failed', 'error')
+    } finally {
+      setUnlocking(null)
+    }
+  }
+
   return (
-    <Modal title={`QR passes — ${p.name}`} onClose={onClose} subtitle="Only unlocked sessions have a pass. Joining unlocks the next one.">
+    <Modal title={`QR passes — ${p.name}`} onClose={onClose} subtitle="Passes are issued for upcoming sessions. Missed sessions are marked automatically — unlock a pass if someone needs it.">
       <div className="space-y-4 p-6">
         {p.attendance.map((a) => (
           <div key={a.session_id} className="surface-2 rounded-xl border border-border p-3">
@@ -89,7 +107,7 @@ function QrPassModal({
                       Emailed
                     </span>
                   )}
-                  {a.qr_token && (
+                  {a.qr_token ? (
                     <>
                       <button
                         onClick={() => onEmail(a)}
@@ -110,6 +128,15 @@ function QrPassModal({
                         <Icon name="download" size={11} />
                       </button>
                     </>
+                  ) : (
+                    <button
+                      onClick={() => unlock(a)}
+                      disabled={unlocking === a.session_id}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover-soft disabled:opacity-50"
+                    >
+                      <Icon name="wand-magic-sparkles" size={10} />
+                      {unlocking === a.session_id ? 'Unlocking…' : 'Unlock pass'}
+                    </button>
                   )}
                 </div>
               </div>
@@ -243,6 +270,11 @@ function ParticipantsBody() {
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [passP, setPassP] = useState<ParticipantItem | null>(null)
   const [emailFor, setEmailFor] = useState<{ p: ParticipantItem; a: AttendanceItem } | null>(null)
+  const [batch, setBatch] = useState<{ running: boolean; done: number; total: number } | null>(null)
+  const [batchResult, setBatchResult] = useState<{
+    issued: { name: string; cert_no: string }[]
+    skipped: { name: string; reason: string }[]
+  } | null>(null)
   const addOnce = useRef(false)
 
   const event = events.find((e) => e.id === eventId) ?? null
@@ -377,11 +409,64 @@ function ParticipantsBody() {
   const issueCert = async (p: ParticipantItem) => {
     try {
       const r = await api.issueCertificate(eventId, p.id)
-      toast(`Certificate ${r.cert_no} issued to ${p.name}.`)
+      const email =
+        r.emailed === 'live'
+          ? ` — emailed to ${p.email}`
+          : r.emailed === 'simulated'
+            ? ' — email simulated (provider off)'
+            : ' — email pending'
+      toast(`Certificate ${r.cert_no} issued to ${p.name}.${email}`)
       reloadRoster(eventId)
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Issue failed', 'error')
     }
+  }
+
+  const issueAll = async () => {
+    if (!event || batch?.running) return
+    try {
+      const t = await api.getTemplate(event.id)
+      if (!t) {
+        toast('Set a certificate template for this program first.', 'error')
+        return
+      }
+    } catch {
+      toast('Could not check the certificate template.', 'error')
+      return
+    }
+
+    const rule =
+      event.cert_min_sessions === null
+        ? 'attended every session'
+        : `attended at least ${event.cert_min_sessions} of ${event.total_sessions} sessions`
+    const ok = await confirm(
+      `Issue certificates for every participant in "${event.title}"? Anyone who hasn't ${rule} or already has a certificate is skipped automatically.`,
+      { confirmLabel: 'Issue all' }
+    )
+    if (!ok) return
+
+    const issued: { name: string; cert_no: string }[] = []
+    const skipped: { name: string; reason: string }[] = []
+    setBatch({ running: true, done: 0, total: roster.length })
+    for (const [i, p] of roster.entries()) {
+      try {
+        const r = await api.issueCertificate(event.id, p.id)
+        issued.push({ name: p.name, cert_no: r.cert_no })
+      } catch (e) {
+        skipped.push({
+          name: p.name,
+          reason: e instanceof Error ? e.message : 'Issue failed',
+        })
+      }
+      setBatch({ running: true, done: i + 1, total: roster.length })
+    }
+    setBatch(null)
+    setBatchResult({ issued, skipped })
+    toast(
+      `Certificates issued: ${issued.length} · Skipped: ${skipped.length}`,
+      skipped.length > 0 ? 'info' : 'success'
+    )
+    reloadRoster(event.id)
   }
 
   const mark = async (p: ParticipantItem, sessionId: string, attended: boolean) => {
@@ -445,14 +530,26 @@ function ParticipantsBody() {
             className="inp py-2.5 pl-8"
           />
         </div>
-        <button
-          onClick={openAdd}
-          disabled={!event}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 md:ml-auto"
-        >
-          <Icon name="user-plus" size={13} />
-          Add participant
-        </button>
+        <div className="flex flex-wrap gap-2 md:ml-auto">
+          <button
+            onClick={() => void issueAll()}
+            disabled={!event || roster.length === 0 || batch?.running}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover-soft disabled:opacity-50"
+          >
+            <Icon name="award" size={13} />
+            {batch?.running
+              ? `Issuing ${batch.done}/${batch.total}…`
+              : 'Issue all certificates'}
+          </button>
+          <button
+            onClick={openAdd}
+            disabled={!event}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            <Icon name="user-plus" size={13} />
+            Add participant
+          </button>
+        </div>
       </div>
 
       {event && (
@@ -688,6 +785,10 @@ function ParticipantsBody() {
             setEmailFor({ p: passP, a })
             setPassP(null)
           }}
+          onUnlocked={(updated) => {
+            setPassP(updated)
+            reloadRoster(eventId)
+          }}
         />
       )}
 
@@ -699,6 +800,83 @@ function ParticipantsBody() {
           onClose={() => setEmailFor(null)}
           onSent={() => reloadRoster(eventId)}
         />
+      )}
+
+      {batchResult && (
+        <Modal
+          title="Certificate issuing complete"
+          subtitle={
+            event
+              ? `${event.title} — issued ${batchResult.issued.length}, skipped ${batchResult.skipped.length}`
+              : undefined
+          }
+          onClose={() => setBatchResult(null)}
+          actions={
+            <BtnPrimary className="w-full" onClick={() => setBatchResult(null)}>
+              Done
+            </BtnPrimary>
+          }
+        >
+          <div className="space-y-4 p-5">
+            {batchResult.issued.length > 0 && (
+              <div>
+                <p
+                  className="mb-2 text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  Issued ({batchResult.issued.length})
+                </p>
+                <div className="space-y-1.5">
+                  {batchResult.issued.map((r) => (
+                    <div
+                      key={r.cert_no}
+                      className="surface-2 flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-xs"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Icon name="circle-check" size={11} style={{ color: 'var(--success)' }} />
+                        <span className="truncate font-medium">{r.name}</span>
+                      </span>
+                      <span className="code-str shrink-0" style={{ color: 'var(--ink-soft)' }}>
+                        {r.cert_no}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {batchResult.skipped.length > 0 && (
+              <div>
+                <p
+                  className="mb-2 text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  Skipped ({batchResult.skipped.length})
+                </p>
+                <div className="space-y-1.5">
+                  {batchResult.skipped.map((r, i) => (
+                    <div
+                      key={`${r.name}-${i}`}
+                      className="surface-2 rounded-lg border border-border px-3 py-2 text-xs"
+                    >
+                      <p className="flex items-center gap-2 font-medium">
+                        <Icon name="circle-info" size={11} style={{ color: 'var(--info)' }} />
+                        {r.name}
+                      </p>
+                      <p className="mt-0.5 pl-[19px]" style={{ color: 'var(--ink-soft)' }}>
+                        {r.reason}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {batchResult.issued.length === 0 && batchResult.skipped.length === 0 && (
+              <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>
+                No participants to process.
+              </p>
+            )}
+          </div>
+        </Modal>
       )}
 
       {menu &&
@@ -737,7 +915,7 @@ function ParticipantsBody() {
                 onClick={() => {
                   const a = menu.p.attendance.find((x) => x.qr_token)
                   if (a) setEmailFor({ p: menu.p, a })
-                  else toast('No pass unlocked for this participant yet.', 'info')
+                  else toast('No pass available yet — open View QR passes to unlock one.', 'info')
                   closeMenu()
                 }}
                 className="row-menu-item"

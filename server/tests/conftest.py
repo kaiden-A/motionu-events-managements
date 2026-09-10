@@ -61,22 +61,25 @@ def _no_email(monkeypatch):
     monkeypatch.setattr(settings, "api_key", None)
 
 
-def make_session_in(ordinal: int, label: str | None = None) -> SessionIn:
+def make_session_in(ordinal: int, label: str | None = None, date: str = "2099-01-01") -> SessionIn:
     return SessionIn(
         label=label or f"Session {ordinal}",
-        date="2026-01-01",
+        date=date,
         start_time="10:00",
         end_time="11:00",
         location="Main Hall",
     )
 
 
-def make_event_in(n_sessions: int = 2, title: str = "Tech Talk") -> EventIn:
+def make_event_in(
+    n_sessions: int = 2, title: str = "Tech Talk", cert_min_sessions: int | None = None
+) -> EventIn:
     return EventIn(
         title=title,
         category="General",
         description="desc",
         capacity=100,
+        cert_min_sessions=cert_min_sessions,
         sessions=[make_session_in(i) for i in range(1, n_sessions + 1)],
     )
 

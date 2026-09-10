@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     api_key: str | None = None     # provider key sent as `motionu-api-key` (API_KEY)
     email_from: str = "info@motionukict.com"
 
+    # --- Public links ---
+    public_app_url: str = "http://localhost:3000"  # frontend origin used in emails
+    download_secret: str | None = None  # HMAC key for cert links; falls back to R2 secret
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property
@@ -58,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def email_enabled(self) -> bool:
         return bool(self.email_api and self.api_key)
+
+    @property
+    def cert_link_secret(self) -> str:
+        return self.download_secret or self.secret_access_key
 
 
 @lru_cache

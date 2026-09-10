@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -23,6 +23,7 @@ class Event(Base):
     category: Mapped[str] = mapped_column(String(50))
     description: Mapped[str] = mapped_column(Text, default="")
     capacity: Mapped[int] = mapped_column(Integer, default=1)
+    cert_min_sessions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(
@@ -125,6 +126,7 @@ class CertificateTemplate(Base):
     file_size: Mapped[int] = mapped_column(Integer)
     uploaded_by: Mapped[str] = mapped_column(String(200))
     uploaded_at: Mapped[str] = mapped_column(String(10))
+    fields: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     event: Mapped[Event] = relationship(back_populates="template")
 
@@ -143,6 +145,8 @@ class Certificate(Base):
     issued_at: Mapped[str] = mapped_column(String(10))
     revoked_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
     template_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    rendered_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    emailed_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     participant: Mapped[Participant] = relationship(back_populates="certificates")
 

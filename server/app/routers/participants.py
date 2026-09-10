@@ -9,7 +9,6 @@ from app.database import get_db
 from app.dependencies import UserPrincipal, get_current_user
 from app.models import Attendance, Event, Participant, Session
 from app.schemas import ParticipantIn, ParticipantOut, ParticipantUpdateIn
-from app.services import checkin as checkin_svc
 from app.services import events as event_svc
 from app.services import mail as mail_svc
 from app.services import participants as participant_svc
@@ -120,11 +119,6 @@ async def set_attendance(
         raise HTTPException(status_code=404, detail="Session not found")
 
     if attended:
-        # manual join still respects the sequential gate
-        try:
-            await checkin_svc.check_gate(db, event, session, p)
-        except checkin_svc.CheckinError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
         att.attended = True
         att.joined_by = "manual"
         att.joined_at = datetime.now(timezone.utc)
@@ -141,6 +135,30 @@ async def set_attendance(
             db, "no-show", f"{p.name} marked no-show for {session.label} of {event.title}",
             event.id, user.sub,
         )
+    await db.commit()
+    return participant_svc.to_participant_out(p, event)
+
+
+@router.post("/{participant_id}/unlock/{session_id}", response_model=ParticipantOut)
+async def unlock_pass(
+    event_id: str,
+    participant_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserPrincipal = Depends(get_current_user),
+):
+    event = await _get_event(db, event_id)
+    p = await _get_participant(db, event, participant_id)
+    session = next((s for s in event.sessions if s.id == session_id), None)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    att = await participant_svc.unlock_pass(db, p, session)
+    if att is None:
+        raise HTTPException(status_code=404, detail="Attendance row not found")
+    await event_svc.log_activity(
+        db, "qr", f"QR pass unlocked for {p.name} — {session.label} of {event.title}",
+        event.id, user.sub,
+    )
     await db.commit()
     return participant_svc.to_participant_out(p, event)
 

@@ -14,6 +14,7 @@ export interface EventItem {
   category: string
   description: string
   capacity: number
+  cert_min_sessions: number | null
   created_at: string
   sessions: SessionItem[]
   total_sessions: number
@@ -50,6 +51,15 @@ export interface CheckinResult {
   message: string | null
 }
 
+export interface CertField {
+  key: 'name' | 'cert_no' | 'date'
+  x: number
+  y: number
+  font_size: number
+  color: string
+  font: string
+}
+
 export interface TemplateInfo {
   event_id: string
   file_name: string
@@ -57,6 +67,15 @@ export interface TemplateInfo {
   file_size: number
   uploaded_at: string
   download_url: string | null
+  fields: CertField[]
+}
+
+export interface IssueResult {
+  cert_no: string
+  issued_at: string
+  download_url: string | null
+  rendered: boolean
+  emailed: 'live' | 'simulated' | 'skipped' | null
 }
 
 export interface DashboardData {
