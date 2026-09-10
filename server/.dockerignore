@@ -1,0 +1,29 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Secrets / local environment (never bake into the image)
+.env
+.env.*
+!.env.example
+
+# Tests and local tooling
+tests/
+
+# VCS / editor / docs
+.git/
+.gitignore
+.vscode/
+.idea/
+*.md
+!README.md
+
+# Docker files themselves
+Dockerfile
+.dockerignore
